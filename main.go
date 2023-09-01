@@ -7,19 +7,39 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/net/html"
 )
 
 func main() {
-	result := passingTest("http://147.78.65.149/start/", "http://147.78.65.149/passed")
-	if result == nil {
-		fmt.Println("Test successfully passed")
-	} else {
-		log.Println(result)
+	startURL := os.Getenv("START_PAGE")
+	finalURL := os.Getenv("FINAL_PAGE")
+	qtyOfThreads, err := strconv.Atoi(os.Getenv("QTY_OF_THREADS"))
+	if err != nil {
+		log.Fatalf("Failed to parse quantity of threads: %s\n", os.Getenv("QTY_OF_THREADS"))
 	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(qtyOfThreads)
+
+	for i := 0; i < qtyOfThreads; i++ {
+		go func(n int) {
+			result := passingTest(startURL, finalURL)
+			log.Printf("Process #%d: ", n)
+			if result == nil {
+				log.Println("Test successfully passed")
+			} else {
+				log.Println(result)
+			}
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
 }
 
 func passingTest(startURL, finalURL string) error {
@@ -40,7 +60,7 @@ func passingTest(startURL, finalURL string) error {
 	}
 
 	for locationError == nil && response.StatusCode == 302 && location.String() != finalURL {
-		fmt.Printf("%v\n", location) // TODO: delete!!!!!!!!!!!!!!!!!!!!!!!
+		//fmt.Printf("%v\n", location) // TODO: delete!!!!!!!!!!!!!!!!!!!!!!!
 		response, err = responseToHTTPGetRequest(location.String(), client)
 		if err != nil {
 			return fmt.Errorf("failed to get response for page with question: %s ", err)
