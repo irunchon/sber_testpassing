@@ -3,24 +3,21 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	"time"
 
 	"golang.org/x/net/html"
 )
 
 func main() {
-	requestURL := fmt.Sprintf("http://147.78.65.149/start/")
-	request, err := http.NewRequest("GET", requestURL, nil)
+	passingTest("http://147.78.65.149/start/", "http://147.78.65.149/passed")
+}
 
-	if err != nil {
-		log.Fatalf("Failed to create request: %v\n", err)
-	}
-
+func passingTest(startURLStr, finalURLStr string) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		log.Fatalf("Failed to create cookie jar: %v\n", err)
@@ -31,55 +28,72 @@ func main() {
 		},
 		Jar: jar,
 	}
-	response, err := client.Do(request)
+
+	getRequest, err := http.NewRequest("GET", startURLStr, nil)
+	if err != nil {
+		log.Fatalf("Failed to create GET request: %v\n", err)
+	}
+	response, err := client.Do(getRequest)
 	defer response.Body.Close()
 	if err != nil {
-		log.Fatalf("Failed to perform Get request: %v\n", err)
+		log.Fatalf("Failed to get response to GET request: %v\n", err)
 	}
-	fmt.Printf("Response:\nstatus code: %v\nheader: %v\ncookies: %v\n",
-		response.StatusCode, response.Header, response.Cookies())
 
-	fmt.Printf("*****\n")
-
-	// ------------ QUESTION 1 ------------ //
-	request, err = http.NewRequest("GET", "http://147.78.65.149/question/1", nil)
+	//var location *url.URL
+	//var locationError error
+	location, locationError := response.Location()
+	finalURL, err := url.Parse(finalURLStr)
 	if err != nil {
-		log.Fatalf("Failed to create request to question 1: %v\n", err)
+		log.Fatalf("Failed to get URL from string %s: %v\n", finalURLStr, err)
 	}
+	fmt.Printf("location: %v\nfinalURL: %v\nfinalURL == location? %v\n\n", location, finalURL, finalURL == location) // delete!!!!!!!!!!!!
 
-	response, err = client.Do(request)
-	if err != nil {
-		log.Fatalf("Failed to perform Get request for quesion: %v\n", err)
+	for response.StatusCode == 302 {
+		getRequest, err = http.NewRequest("GET", fmt.Sprint(location), nil)
+		if err != nil {
+			log.Fatalf("Failed to create request to %v: %v\n", location, err)
+		}
+		response, err = client.Do(getRequest)
+		if err != nil {
+			log.Fatalf("Failed to perform Get request for quesion: %v\n", err)
+		}
+		if response.StatusCode != 200 {
+			log.Fatalf("Wrong status code of response: %v\n", response.StatusCode)
+		}
+
+		fmt.Printf("Response to GET:\nstatus: %v\nlocation: %v\n", response.StatusCode, location) // delete!!!!!!!!!!!!
+		response = formAndPostAnswer(response.Body, location.String(), client)
+		time.Sleep(time.Second)
+		location, locationError = response.Location()
+		fmt.Printf("Response to POST:\nstatus: %v\nlocation: %v\n\n", response.StatusCode, location) // delete!!!!!!!!!!!!
+		if locationError != nil {
+			log.Fatalf("Failed to get location in response: %v\n", err)
+		}
+		if location.String() == finalURLStr {
+			fmt.Println("Test successfully passed")
+			break
+		}
 	}
-	fmt.Printf("Response:\nstatus code: %v\nheader: %v\ncookies: %v\n",
-		response.StatusCode, response.Header, response.Body)
+}
 
-	// ------------ POST ANSWERS ------------ //
-	keysAndAnswers := parsingHTMLPage(response.Body)
+func formAndPostAnswer(body io.ReadCloser, questionPage string, client *http.Client) *http.Response {
+	keysAndAnswers := parsingHTMLPage(body)
 	data := url.Values{}
 	for k, v := range keysAndAnswers {
 		data.Set(k, v)
 	}
-	encodedData := data.Encode()
-	fmt.Printf("\nencodedData: %v\n", encodedData)
-	postRequest, err := http.NewRequest("POST", "http://147.78.65.149/question/1", strings.NewReader(encodedData))
+	postRequest, err := http.NewRequest("POST", questionPage, strings.NewReader(data.Encode()))
 	if err != nil {
-		log.Fatalf("Failed to create POST request for question 1: %v\n", err)
+		log.Fatalf("Failed to create POST request for question (%s): %v\n", questionPage, err)
 	}
 	postRequest.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	postResponse, err := client.Do(postRequest)
 	defer postResponse.Body.Close()
 	if err != nil {
-		log.Fatalf("Failed to receive response to POST for question 1: %v\n", err)
+		log.Fatalf("Failed to receive response to POST for question (%s)): %v\n", questionPage, err)
 	}
-	fmt.Printf("\nResponse to POST:\n%v\n", postResponse.Status)
-	body, err := ioutil.ReadAll(postResponse.Body)
-	if err != nil {
-		log.Fatalf("Failed to read body: %v\n", err)
-
-	}
-	fmt.Printf("body:\n%s\n", body)
+	return postResponse
 }
 
 func parsingHTMLPage(r io.Reader) map[string]string {
@@ -134,14 +148,7 @@ func parsingHTMLPage(r io.Reader) map[string]string {
 	f(parsedNode)
 
 	answersByKeys := make(map[string]string)
-	//------------ DELETE THIS: ------------ //
-	fmt.Println("\nquestionOptions:")
 	for k, v := range questionOptions {
-		fmt.Printf("key: %s\tvalues: %v\n", k, v)
-	}
-	fmt.Println("question - qnswer:")
-	for k, v := range questionOptions {
-		fmt.Printf("%s: %s\n", k, formAnswer(v)) /////////////////////
 		answersByKeys[k] = formAnswer(v)
 	}
 	return answersByKeys
