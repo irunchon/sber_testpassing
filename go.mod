@@ -1,4 +1,4 @@
-module github.com/irunchon/sber_testtask_1
+module github.com/irunchon/sber_testpassing
 
 go 1.20
 
