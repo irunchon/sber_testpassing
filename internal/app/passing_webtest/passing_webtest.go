@@ -32,7 +32,7 @@ func NewWorker(limiter <-chan time.Time, startURL, finalURL string) (*Worker, er
 }
 
 func (w *Worker) PassingTest() error {
-	<-w.limiter // Rate limiter for 3 requests per second
+	<-w.limiter // rate limiter
 	response, err := w.getPage(w.startURL)
 	if err != nil {
 		return fmt.Errorf("failed to get response for start page: %s ", err)
@@ -45,7 +45,7 @@ func (w *Worker) PassingTest() error {
 	}
 
 	for locationError == nil && response.StatusCode == 302 && location.String() != w.finalURL {
-		<-w.limiter // Rate limiter for 3 requests per second
+		<-w.limiter
 		response, err = w.getPage(location.String())
 		if err != nil {
 			return fmt.Errorf("failed to get response for page with question: %s ", err)
@@ -61,7 +61,7 @@ func (w *Worker) PassingTest() error {
 			return fmt.Errorf("failed to form data with answers: %s ", dataError)
 		}
 
-		<-w.limiter // Rate limiter for 3 requests per second
+		<-w.limiter
 		response, err = w.postAnswers(location.String(), data)
 		if err != nil {
 			return fmt.Errorf("failed to post answers: %s ", err)
