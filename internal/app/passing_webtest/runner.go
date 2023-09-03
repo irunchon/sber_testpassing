@@ -6,10 +6,10 @@ import (
 	"time"
 )
 
-func Runner(qtyOfThreads int, startURL, finalURL string) {
+func Runner(qtyOfThreads int, startURL, finalURL string, limiter <-chan time.Time) {
 	wg := sync.WaitGroup{}
 	wg.Add(qtyOfThreads)
-	limiter := time.Tick(333 * time.Millisecond)
+
 	successRate := 0
 
 	for i := 0; i < qtyOfThreads; i++ {

@@ -31,8 +31,8 @@ func NewWorker(limiter <-chan time.Time, startURL, finalURL string) (*Worker, er
 }
 
 func (w *Worker) PassingTest() error {
-	<-w.limiter                                                       // Rate limiter for 3 requests per second
-	response, err := utils.ResponseToGetRequest(w.startURL, w.client) ////
+	<-w.limiter // Rate limiter for 3 requests per second
+	response, err := w.getPage(w.startURL)
 	if err != nil {
 		return fmt.Errorf("failed to get response for start page: %s ", err)
 	}
@@ -45,7 +45,7 @@ func (w *Worker) PassingTest() error {
 
 	for locationError == nil && response.StatusCode == 302 && location.String() != w.finalURL {
 		<-w.limiter // Rate limiter for 3 requests per second
-		response, err = utils.ResponseToGetRequest(location.String(), w.client)
+		response, err = w.getPage(location.String())
 		if err != nil {
 			return fmt.Errorf("failed to get response for page with question: %s ", err)
 		}
@@ -59,7 +59,7 @@ func (w *Worker) PassingTest() error {
 		}
 
 		<-w.limiter // Rate limiter for 3 requests per second
-		response, err = utils.ResponseToPostRequest(location.String(), w.client, data)
+		response, err = w.postAnswers(location.String(), data)
 		if err != nil {
 			return fmt.Errorf("failed to post answers: %s ", err)
 		}
@@ -75,6 +75,10 @@ func (w *Worker) PassingTest() error {
 	return nil
 }
 
+func (w *Worker) getPage(url string) (*http.Response, error) {
+	return utils.ResponseToGetRequest(url, w.client)
+}
+
 func formAnswersForSending(body io.ReadCloser) (url.Values, error) {
 	keysAndAnswers, err := parsingHTMLPage(body)
 	if err != nil {
@@ -85,6 +89,22 @@ func formAnswersForSending(body io.ReadCloser) (url.Values, error) {
 		data.Set(k, v)
 	}
 	return data, nil
+}
+
+func parsingHTMLPage(r io.Reader) (map[string]string, error) {
+	parsedNode, err := html.Parse(r)
+	if err != nil {
+		return nil, err
+	}
+
+	questionOptions := make(map[string][]string)
+	findValuesForQuestionOptions(parsedNode, questionOptions)
+
+	answersByKeys := make(map[string]string)
+	for k, v := range questionOptions {
+		answersByKeys[k] = formAnswers(v)
+	}
+	return answersByKeys, nil
 }
 
 func findValuesForQuestionOptions(n *html.Node, questionOptions map[string][]string) {
@@ -136,18 +156,6 @@ func formAnswers(options []string) string {
 	return utils.FindLongestStringInSlice(options)
 }
 
-func parsingHTMLPage(r io.Reader) (map[string]string, error) {
-	parsedNode, err := html.Parse(r)
-	if err != nil {
-		return nil, err
-	}
-
-	questionOptions := make(map[string][]string)
-	findValuesForQuestionOptions(parsedNode, questionOptions)
-
-	answersByKeys := make(map[string]string)
-	for k, v := range questionOptions {
-		answersByKeys[k] = formAnswers(v)
-	}
-	return answersByKeys, nil
+func (w *Worker) postAnswers(url string, data url.Values) (*http.Response, error) {
+	return utils.ResponseToPostRequest(url, w.client, data)
 }
