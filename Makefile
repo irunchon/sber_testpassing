@@ -6,6 +6,10 @@ export
 all:
 	go run cmd/sber_testpassing/main.go
 
+.PHONY: run
+build:
+	go run cmd/sber_testpassing/main.go
+
 .PHONY: test
 test:
 	go test ./internal/...
