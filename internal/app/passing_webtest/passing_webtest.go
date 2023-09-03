@@ -79,7 +79,7 @@ func (w *Worker) getPage(url string) (*http.Response, error) {
 	return utils.ResponseToGetRequest(url, w.client)
 }
 
-func formAnswersForSending(body io.ReadCloser) (url.Values, error) {
+func formAnswersForSending(body io.Reader) (url.Values, error) {
 	keysAndAnswers, err := parsingHTMLPage(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse HTML page: %s ", err)

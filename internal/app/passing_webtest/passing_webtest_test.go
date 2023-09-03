@@ -1,6 +1,7 @@
 package passing_webtest
 
 import (
+	"net/url"
 	"strings"
 	"testing"
 
@@ -10,16 +11,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// func NewWorker(limiter <-chan time.Time, startURL, finalURL string) (*Worker, error)
-func TestNewWorker(t *testing.T) {}
+func TestFormAnswersForSending(t *testing.T) {
+	t.Run("One INPUT[@type=text] field", func(t *testing.T) {
+		const htm = `<p>1) <input type="text" name="8bFGjvisdkL5v4V2"></p>`
+		r := strings.NewReader(htm)
+		dataExpected := url.Values(map[string][]string{
+			"8bFGjvisdkL5v4V2": {"test"},
+		})
+		dataReceived, err := formAnswersForSending(r)
+		require.NoError(t, err)
+		assert.True(t, areMapsWithStringSliceValueEqual(t, dataReceived, dataExpected))
+	})
+}
 
-// func (w *Worker) PassingTest() error
-func TestPassingTest(t *testing.T) {}
-
-// func formAnswersForSending(body io.ReadCloser) (url.Values, error)
-func TestFormAnswersForSending(t *testing.T) {}
-
-// func parsingHTMLPage(r io.Reader) (map[string]string, error)
 func TestParsingHTMLPage(t *testing.T) {
 	t.Run("One INPUT[@type=text] field", func(t *testing.T) {
 		const htm = `<p>1) <input type="text" name="8bFGjvisdkL5v4V2"></p>`
@@ -79,7 +83,6 @@ func areMapsWithStringValueEqual(t *testing.T, m1, m2 map[string]string) bool {
 	return true
 }
 
-// func findValuesForQuestionOptions(n *html.Node, questionOptions map[string][]string)
 func TestFindValuesForQuestionOptions(t *testing.T) {
 	t.Run("One INPUT[@type=text] field", func(t *testing.T) {
 		const htm = `<p>1) <input type="text" name="8bFGjvisdkL5v4V2"></p>`
@@ -88,7 +91,7 @@ func TestFindValuesForQuestionOptions(t *testing.T) {
 
 		questionOptions := make(map[string][]string)
 		expectedOptions := map[string][]string{
-			"8bFGjvisdkL5v4V2": []string{},
+			"8bFGjvisdkL5v4V2": {},
 		}
 		findValuesForQuestionOptions(node, questionOptions)
 		assert.True(t, areMapsWithStringSliceValueEqual(t, expectedOptions, questionOptions))
@@ -102,7 +105,7 @@ func TestFindValuesForQuestionOptions(t *testing.T) {
 
 		questionOptions := make(map[string][]string)
 		expectedOptions := map[string][]string{
-			"6V7DPsPzmcGv6hKJ": []string{
+			"6V7DPsPzmcGv6hKJ": {
 				"g5LGQB6Qb8zR",
 				"sC3F",
 				"KVh8yzk",
@@ -123,7 +126,7 @@ func TestFindValuesForQuestionOptions(t *testing.T) {
 
 		questionOptions := make(map[string][]string)
 		expectedOptions := map[string][]string{
-			"I7bQvTSIfoCVwN9Y": []string{
+			"I7bQvTSIfoCVwN9Y": {
 				"nQgq",
 				"yyWD",
 				"xRCCvB",
