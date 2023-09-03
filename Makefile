@@ -1,7 +1,6 @@
 include .env
 export
 
-
 .PHONY: all
 all:
 	go run cmd/sber_testpassing/main.go
@@ -17,3 +16,7 @@ test:
 .PHONY: test-coverage
 test-coverage:
 	go test ./internal/... -coverprofile=coverage.out  && go tool cover -html=coverage.out
+
+.PHONY: clean
+clean:
+	rm -rf *.out
