@@ -109,43 +109,51 @@ func parsingHTMLPage(r io.Reader) (map[string]string, error) {
 
 func findValuesForQuestionOptions(n *html.Node, questionOptions map[string][]string) {
 	if n.Type == html.ElementNode && n.Data == "input" {
-		var keyToAdd string
-		for _, attr := range n.Attr {
-			if attr.Key == "type" {
-				continue
-			}
-			if attr.Key == "name" {
-				keyToAdd = attr.Val
-				if _, isFound := questionOptions[keyToAdd]; !isFound {
-					questionOptions[keyToAdd] = make([]string, 0)
-				}
-			}
-			if attr.Key == "value" {
-				questionOptions[keyToAdd] = append(questionOptions[keyToAdd], attr.Val)
-			}
-		}
+		getInputValues(n, questionOptions)
 	}
 	if n.Type == html.ElementNode && n.Data == "select" {
-		var keyToAdd string
-		for _, attr := range n.Attr {
-			keyToAdd = attr.Val
-			if _, found := questionOptions[keyToAdd]; !found {
-				questionOptions[keyToAdd] = make([]string, 0)
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if c.Data != "option" {
-				continue
-			}
-			for _, attr := range c.Attr {
-				if attr.Val != "" {
-					questionOptions[keyToAdd] = append(questionOptions[keyToAdd], attr.Val)
-				}
-			}
-		}
+		getSelectValues(n, questionOptions)
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		findValuesForQuestionOptions(c, questionOptions)
+	}
+}
+
+func getInputValues(n *html.Node, questionOptions map[string][]string) {
+	var keyToAdd string
+	for _, attr := range n.Attr {
+		if attr.Key == "type" {
+			continue
+		}
+		if attr.Key == "name" {
+			keyToAdd = attr.Val
+			if _, isFound := questionOptions[keyToAdd]; !isFound {
+				questionOptions[keyToAdd] = make([]string, 0)
+			}
+		}
+		if attr.Key == "value" {
+			questionOptions[keyToAdd] = append(questionOptions[keyToAdd], attr.Val)
+		}
+	}
+}
+
+func getSelectValues(n *html.Node, questionOptions map[string][]string) {
+	var keyToAdd string
+	for _, attr := range n.Attr {
+		keyToAdd = attr.Val
+		if _, found := questionOptions[keyToAdd]; !found {
+			questionOptions[keyToAdd] = make([]string, 0)
+		}
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.Data != "option" {
+			continue
+		}
+		for _, attr := range c.Attr {
+			if attr.Val != "" {
+				questionOptions[keyToAdd] = append(questionOptions[keyToAdd], attr.Val)
+			}
+		}
 	}
 }
 

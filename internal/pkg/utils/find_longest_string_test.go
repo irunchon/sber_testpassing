@@ -37,6 +37,11 @@ func TestFindLongestStringInSlice(t *testing.T) {
 			strings:  []string{"q", "asdfgh", "qwerty", "123"},
 			expected: "qwerty",
 		},
+		{
+			name:     "Numbers and non-ASCII symbols",
+			strings:  []string{"привет", "!№;%:?*()", "1234567890", "我的名字是艾拉"},
+			expected: "1234567890",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, tc.expected, FindLongestStringInSlice(tc.strings))
