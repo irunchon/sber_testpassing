@@ -1,4 +1,4 @@
-package passing_webtest
+package utils
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func newHTTPClient() (*http.Client, error) {
+func NewHTTPClient() (*http.Client, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create cookie jar: %s ", err)
@@ -22,7 +22,7 @@ func newHTTPClient() (*http.Client, error) {
 	return client, nil
 }
 
-func responseToHTTPGetRequest(url string, client *http.Client) (*http.Response, error) {
+func ResponseToHTTPGetRequest(url string, client *http.Client) (*http.Response, error) {
 	getRequest, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GET request: %s ", err)
@@ -34,7 +34,7 @@ func responseToHTTPGetRequest(url string, client *http.Client) (*http.Response, 
 	return response, nil
 }
 
-func postData(questionPage string, client *http.Client, data url.Values) (*http.Response, error) {
+func PostData(questionPage string, client *http.Client, data url.Values) (*http.Response, error) {
 	postRequest, err := http.NewRequest("POST", questionPage, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create POST request for question (%s): %s ", questionPage, err)

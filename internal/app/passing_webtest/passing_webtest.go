@@ -11,13 +11,22 @@ import (
 	"golang.org/x/net/html"
 )
 
-func PassingTest(startURL, finalURL string) error {
-	client, err := newHTTPClient()
+type Worker struct {
+	limiter <-chan time.Time
+}
+
+func NewWorker(limiter <-chan time.Time) *Worker {
+	return &Worker{limiter: limiter}
+}
+
+func (w *Worker) PassingTest(startURL, finalURL string) error {
+	client, err := utils.NewHTTPClient()
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP client: %s ", err)
 	}
 
-	response, err := responseToHTTPGetRequest(startURL, client)
+	<-w.limiter // Rate limiter for 3 requests per second
+	response, err := utils.ResponseToHTTPGetRequest(startURL, client)
 	if err != nil {
 		return fmt.Errorf("failed to get response for start page: %s ", err)
 	}
@@ -30,7 +39,8 @@ func PassingTest(startURL, finalURL string) error {
 
 	for locationError == nil && response.StatusCode == 302 && location.String() != finalURL {
 		//fmt.Printf("%v\n", location) // TODO: delete!!!!!!!!!!!!!!!!!!!!!!!
-		response, err = responseToHTTPGetRequest(location.String(), client)
+		<-w.limiter // Rate limiter for 3 requests per second
+		response, err = utils.ResponseToHTTPGetRequest(location.String(), client)
 		if err != nil {
 			return fmt.Errorf("failed to get response for page with question: %s ", err)
 		}
@@ -42,12 +52,13 @@ func PassingTest(startURL, finalURL string) error {
 		if dataError != nil {
 			return fmt.Errorf("failed to form data with answers: %s ", dataError)
 		}
-		response, err = postData(location.String(), client, data)
+
+		<-w.limiter // Rate limiter for 3 requests per second
+		response, err = utils.PostData(location.String(), client, data)
 		if err != nil {
 			return fmt.Errorf("failed to post answers: %s ", err)
 		}
-		// For not to exceed 3 requests per second:
-		time.Sleep(time.Second)
+
 		location, locationError = response.Location()
 	}
 	if response.StatusCode != 302 {
