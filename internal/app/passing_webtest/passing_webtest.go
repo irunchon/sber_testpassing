@@ -3,6 +3,7 @@ package passing_webtest
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -55,6 +56,8 @@ func (w *Worker) PassingTest() error {
 
 		data, dataError := formAnswersForSending(response.Body)
 		if dataError != nil {
+			body, _ := io.ReadAll(response.Body)
+			slog.Debug("Response body: ", string(body))
 			return fmt.Errorf("failed to form data with answers: %s ", dataError)
 		}
 

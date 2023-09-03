@@ -1,7 +1,9 @@
 package passing_webtest
 
 import (
+	"fmt"
 	"log"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -16,12 +18,12 @@ func Runner(qtyOfThreads int, startURL, finalURL string, limiter <-chan time.Tim
 		go func(n int) {
 			worker, err := NewWorker(limiter, startURL, finalURL)
 			if err != nil {
-				log.Printf("Process #%d: %s", n, err)
+				slog.Info(fmt.Sprintf("Process #%d: %s", n, err))
 				return
 			}
 			err = worker.PassingTest()
 			if err == nil {
-				log.Printf("Process #%d: Test successfully passed", n)
+				slog.Info(fmt.Sprintf("Process #%d: Test successfully passed", n))
 				successRate++
 			} else {
 				log.Printf("Process #%d: %s", n, err)

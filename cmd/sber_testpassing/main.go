@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -10,6 +11,8 @@ import (
 )
 
 func main() {
+	loggerConfig()
+
 	startURL := os.Getenv("START_PAGE")
 	finalURL := os.Getenv("FINAL_PAGE")
 
@@ -22,8 +25,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to parse RPS parameter: %s\n", os.Getenv("MAX_SERVER_RPS"))
 	}
-
 	limiter := time.Tick(getTimeLimit(maxRPS))
+
 	passing_webtest.Runner(qtyOfThreads, startURL, finalURL, limiter)
 }
 
@@ -32,4 +35,20 @@ func getTimeLimit(rps int) time.Duration {
 		return time.Second
 	}
 	return time.Duration(1000/rps) * time.Millisecond
+}
+
+func loggerConfig() {
+	opts := &slog.HandlerOptions{}
+	logLevel := os.Getenv("LOG_LEVEL")
+
+	switch logLevel {
+	case "DEBUG":
+		opts.Level = slog.LevelDebug
+	default:
+		opts.Level = slog.LevelInfo
+	}
+	handler := slog.NewJSONHandler(os.Stdout, opts)
+	logger := slog.New(handler)
+
+	slog.SetDefault(logger)
 }
