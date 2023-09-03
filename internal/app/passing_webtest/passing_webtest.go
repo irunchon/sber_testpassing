@@ -3,30 +3,36 @@ package passing_webtest
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/irunchon/sber_testpassing/internal/pkg/utils"
-
 	"golang.org/x/net/html"
 )
 
 type Worker struct {
-	limiter <-chan time.Time
+	limiter            <-chan time.Time
+	startURL, finalURL string
+	client             *http.Client
 }
 
-func NewWorker(limiter <-chan time.Time) *Worker {
-	return &Worker{limiter: limiter}
-}
-
-func (w *Worker) PassingTest(startURL, finalURL string) error {
+func NewWorker(limiter <-chan time.Time, startURL, finalURL string) (*Worker, error) {
 	client, err := utils.NewHTTPClient()
 	if err != nil {
-		return fmt.Errorf("failed to create HTTP client: %s ", err)
+		return nil, fmt.Errorf("failed to create HTTP client: %s ", err)
 	}
+	return &Worker{
+		limiter:  limiter,
+		startURL: startURL,
+		finalURL: finalURL,
+		client:   client,
+	}, nil
+}
 
-	<-w.limiter // Rate limiter for 3 requests per second
-	response, err := utils.ResponseToHTTPGetRequest(startURL, client)
+func (w *Worker) PassingTest() error {
+	<-w.limiter                                                       // Rate limiter for 3 requests per second
+	response, err := utils.ResponseToGetRequest(w.startURL, w.client) ////
 	if err != nil {
 		return fmt.Errorf("failed to get response for start page: %s ", err)
 	}
@@ -34,13 +40,12 @@ func (w *Worker) PassingTest(startURL, finalURL string) error {
 
 	location, locationError := response.Location()
 	if err != nil {
-		return fmt.Errorf("Failed to get URL from string %s: %s ", finalURL, err)
+		return fmt.Errorf("Failed to get URL from string %s: %s ", w.finalURL, err)
 	}
 
-	for locationError == nil && response.StatusCode == 302 && location.String() != finalURL {
-		//fmt.Printf("%v\n", location) // TODO: delete!!!!!!!!!!!!!!!!!!!!!!!
+	for locationError == nil && response.StatusCode == 302 && location.String() != w.finalURL {
 		<-w.limiter // Rate limiter for 3 requests per second
-		response, err = utils.ResponseToHTTPGetRequest(location.String(), client)
+		response, err = utils.ResponseToGetRequest(location.String(), w.client)
 		if err != nil {
 			return fmt.Errorf("failed to get response for page with question: %s ", err)
 		}
@@ -54,7 +59,7 @@ func (w *Worker) PassingTest(startURL, finalURL string) error {
 		}
 
 		<-w.limiter // Rate limiter for 3 requests per second
-		response, err = utils.PostData(location.String(), client, data)
+		response, err = utils.ResponseToPostRequest(location.String(), w.client, data)
 		if err != nil {
 			return fmt.Errorf("failed to post answers: %s ", err)
 		}

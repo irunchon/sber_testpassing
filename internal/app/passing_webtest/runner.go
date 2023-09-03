@@ -10,21 +10,25 @@ func Runner(qtyOfThreads int, startURL, finalURL string) {
 	wg := sync.WaitGroup{}
 	wg.Add(qtyOfThreads)
 	limiter := time.Tick(333 * time.Millisecond)
-	worker := NewWorker(limiter)
 	successRate := 0
 
 	for i := 0; i < qtyOfThreads; i++ {
 		go func(n int) {
-			result := worker.PassingTest(startURL, finalURL)
-			if result == nil {
+			worker, err := NewWorker(limiter, startURL, finalURL)
+			if err != nil {
+				log.Printf("Process #%d: %s", n, err)
+				return
+			}
+			err = worker.PassingTest()
+			if err == nil {
 				log.Printf("Process #%d: Test successfully passed", n)
 				successRate++
 			} else {
-				log.Printf("Process #%d: %s", n, result)
+				log.Printf("Process #%d: %s", n, err)
 			}
 			wg.Done()
 		}(i)
 	}
 	wg.Wait()
-	log.Printf("\nSuccessfully passed %d tests of %d\n", successRate, qtyOfThreads)
+	log.Printf("Successfully passed %d tests of %d\n", successRate, qtyOfThreads)
 }
