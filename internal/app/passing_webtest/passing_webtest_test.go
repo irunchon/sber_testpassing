@@ -20,7 +20,64 @@ func TestPassingTest(t *testing.T) {}
 func TestFormAnswersForSending(t *testing.T) {}
 
 // func parsingHTMLPage(r io.Reader) (map[string]string, error)
-func TestParsingHTMLPage(t *testing.T) {}
+func TestParsingHTMLPage(t *testing.T) {
+	t.Run("One INPUT[@type=text] field", func(t *testing.T) {
+		const htm = `<p>1) <input type="text" name="8bFGjvisdkL5v4V2"></p>`
+		r := strings.NewReader(htm)
+		answersExpected := map[string]string{
+			"8bFGjvisdkL5v4V2": "test",
+		}
+		answersReceived, err := parsingHTMLPage(r)
+		require.NoError(t, err)
+		assert.True(t, areMapsWithStringValueEqual(t, answersExpected, answersReceived))
+	})
+	t.Run("One INPUT[@type=radio] field", func(t *testing.T) {
+		const htm = `<p>2) <input type="radio" name="6V7DPsPzmcGv6hKJ" value="g5LGQB6Qb8zR">g5LGQB6Qb8zR &nbsp;&nbsp;&nbsp;
+<input type="radio" name="6V7DPsPzmcGv6hKJ" value="sC3F">sC3F &nbsp;&nbsp;&nbsp;
+<input type="radio" name="6V7DPsPzmcGv6hKJ" value="KVh8yzk">KVh8yzk &nbsp;&nbsp;&nbsp;</p>`
+		r := strings.NewReader(htm)
+		answersExpected := map[string]string{
+			"6V7DPsPzmcGv6hKJ": "g5LGQB6Qb8zR",
+		}
+		answersReceived, err := parsingHTMLPage(r)
+		require.NoError(t, err)
+		assert.True(t, areMapsWithStringValueEqual(t, answersExpected, answersReceived))
+	})
+	t.Run("Mix of the fields", func(t *testing.T) {
+		const htm = `<p>1) <input type="text" name="8bFGjvisdkL5v4V2"></p>
+<p>2) <input type="radio" name="6V7DPsPzmcGv6hKJ" value="g5LGQB6Qb8zR">g5LGQB6Qb8zR &nbsp;&nbsp;&nbsp;
+<input type="radio" name="6V7DPsPzmcGv6hKJ" value="sC3F">sC3F &nbsp;&nbsp;&nbsp;
+<input type="radio" name="6V7DPsPzmcGv6hKJ" value="KVh8yzk">KVh8yzk &nbsp;&nbsp;&nbsp;</p>
+<p>4) <select name="I7bQvTSIfoCVwN9Y">
+<option value=""></option><option value="nQgq">nQgq</option>
+<option value="yyWD">yyWD</option>
+<option value="xRCCvB">xRCCvB</option>
+<option value="nWwu">nWwu</option>
+<option value="FrfJFGeBdZf">FrfJFGeBdZf</option></select></p>`
+		r := strings.NewReader(htm)
+		answersExpected := map[string]string{
+			"I7bQvTSIfoCVwN9Y": "FrfJFGeBdZf",
+			"6V7DPsPzmcGv6hKJ": "g5LGQB6Qb8zR",
+			"8bFGjvisdkL5v4V2": "test",
+		}
+		answersReceived, err := parsingHTMLPage(r)
+		require.NoError(t, err)
+		assert.True(t, areMapsWithStringValueEqual(t, answersExpected, answersReceived))
+	})
+}
+
+func areMapsWithStringValueEqual(t *testing.T, m1, m2 map[string]string) bool {
+	t.Helper()
+	if len(m1) != len(m2) {
+		return false
+	}
+	for k, v1 := range m1 {
+		if v2, isFound := m2[k]; !isFound || v1 != v2 {
+			return false
+		}
+	}
+	return true
+}
 
 // func findValuesForQuestionOptions(n *html.Node, questionOptions map[string][]string)
 func TestFindValuesForQuestionOptions(t *testing.T) {
@@ -34,7 +91,7 @@ func TestFindValuesForQuestionOptions(t *testing.T) {
 			"8bFGjvisdkL5v4V2": []string{},
 		}
 		findValuesForQuestionOptions(node, questionOptions)
-		assert.True(t, areMapsEqual(t, expectedOptions, questionOptions))
+		assert.True(t, areMapsWithStringSliceValueEqual(t, expectedOptions, questionOptions))
 	})
 	t.Run("One INPUT[@type=radio] field", func(t *testing.T) {
 		const htm = `<p>2) <input type="radio" name="6V7DPsPzmcGv6hKJ" value="g5LGQB6Qb8zR">g5LGQB6Qb8zR &nbsp;&nbsp;&nbsp;
@@ -52,7 +109,7 @@ func TestFindValuesForQuestionOptions(t *testing.T) {
 			},
 		}
 		findValuesForQuestionOptions(node, questionOptions)
-		assert.True(t, areMapsEqual(t, expectedOptions, questionOptions))
+		assert.True(t, areMapsWithStringSliceValueEqual(t, expectedOptions, questionOptions))
 	})
 	t.Run("One SELECT field", func(t *testing.T) {
 		const htm = `<p>4) <select name="I7bQvTSIfoCVwN9Y">
@@ -75,7 +132,7 @@ func TestFindValuesForQuestionOptions(t *testing.T) {
 			},
 		}
 		findValuesForQuestionOptions(node, questionOptions)
-		assert.True(t, areMapsEqual(t, expectedOptions, questionOptions))
+		assert.True(t, areMapsWithStringSliceValueEqual(t, expectedOptions, questionOptions))
 	})
 	t.Run("Mix of the fields", func(t *testing.T) {
 		const htm = `<p>1) <input type="text" name="8bFGjvisdkL5v4V2"></p>
@@ -108,11 +165,11 @@ func TestFindValuesForQuestionOptions(t *testing.T) {
 			"8bFGjvisdkL5v4V2": []string{},
 		}
 		findValuesForQuestionOptions(node, questionOptions)
-		assert.True(t, areMapsEqual(t, expectedOptions, questionOptions))
+		assert.True(t, areMapsWithStringSliceValueEqual(t, expectedOptions, questionOptions))
 	})
 }
 
-func areMapsEqual(t *testing.T, m1, m2 map[string][]string) bool {
+func areMapsWithStringSliceValueEqual(t *testing.T, m1, m2 map[string][]string) bool {
 	t.Helper()
 	if len(m1) != len(m2) {
 		return false
@@ -149,6 +206,3 @@ func TestFormAnswers(t *testing.T) {
 		}
 	}
 }
-
-// func (w *Worker) getPage(url string) (*http.Response, error)
-// func (w *Worker) postAnswers(url string, data url.Values) (*http.Response, error)
