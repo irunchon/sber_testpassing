@@ -38,17 +38,17 @@ func getTimeLimit(rps int) time.Duration {
 }
 
 func loggerConfig() {
-	opts := &slog.HandlerOptions{}
-	logLevel := os.Getenv("LOG_LEVEL")
-
-	switch logLevel {
-	case "DEBUG":
-		opts.Level = slog.LevelDebug
-	default:
-		opts.Level = slog.LevelInfo
+	level := slog.LevelInfo
+	err := level.UnmarshalText([]byte(os.Getenv("LOG_LEVEL")))
+	if err != nil {
+		slog.Info("Undefined log level")
 	}
+
+	opts := &slog.HandlerOptions{
+		Level: level,
+	}
+
 	handler := slog.NewJSONHandler(os.Stdout, opts)
 	logger := slog.New(handler)
-
 	slog.SetDefault(logger)
 }
